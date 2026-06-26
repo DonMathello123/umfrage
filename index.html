@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="de">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>25 Jahre Abi – Was ist aus uns geworden?</title>
+  <style>
+    :root {
+      --bg1:#111827; --bg2:#7c2d12; --card:#ffffff; --text:#111827;
+      --muted:#6b7280; --accent:#f59e0b; --accent2:#ef4444; --ok:#16a34a;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin:0; min-height:100vh; font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(circle at top, var(--bg2), var(--bg1) 58%);
+      color: var(--text); display:flex; align-items:center; justify-content:center; padding:18px;
+    }
+    .app { width:100%; max-width:680px; }
+    .card {
+      background: rgba(255,255,255,.96); border-radius:28px; padding:28px;
+      box-shadow: 0 22px 70px rgba(0,0,0,.32);
+      overflow:hidden;
+    }
+    .badge { display:inline-block; background:#fff7ed; color:#9a3412; padding:8px 12px; border-radius:999px; font-weight:700; font-size:14px; }
+    h1 { margin:16px 0 8px; font-size:34px; line-height:1.05; }
+    h2 { margin:10px 0 12px; font-size:25px; line-height:1.2; }
+    p { color:var(--muted); line-height:1.5; }
+    .progress-wrap { margin:18px 0 8px; background:#f3f4f6; height:10px; border-radius:999px; overflow:hidden; }
+    .progress { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); width:0%; transition:.25s; }
+    .meta { display:flex; justify-content:space-between; gap:12px; color:#6b7280; font-size:14px; margin-bottom:18px; }
+    .options { display:grid; gap:10px; margin:18px 0; }
+    label.option {
+      display:flex; gap:12px; align-items:flex-start; padding:14px 14px; border:1px solid #e5e7eb;
+      border-radius:16px; cursor:pointer; background:#fff; transition:.15s;
+    }
+    label.option:has(input:checked) { border-color:#f59e0b; background:#fffbeb; box-shadow:0 0 0 3px #fef3c7; }
+    input[type=radio] { margin-top:3px; transform:scale(1.2); accent-color:#f59e0b; }
+    textarea, input[type=text] {
+      width:100%; border:1px solid #d1d5db; border-radius:16px; padding:14px 15px; font-size:16px;
+      font-family:inherit; outline:none; background:white;
+    }
+    textarea { min-height:92px; resize:vertical; }
+    textarea:focus, input[type=text]:focus { border-color:#f59e0b; box-shadow:0 0 0 3px #fef3c7; }
+    .btns { display:flex; gap:10px; margin-top:22px; }
+    button {
+      border:0; border-radius:16px; padding:14px 17px; font-weight:800; font-size:16px; cursor:pointer;
+    }
+    .primary { background:linear-gradient(90deg,var(--accent),var(--accent2)); color:white; flex:1; }
+    .secondary { background:#f3f4f6; color:#111827; }
+    .ghost { background:transparent; color:#6b7280; padding-left:0; }
+    .hint { font-size:13px; color:#6b7280; margin-top:10px; }
+    .success { text-align:center; }
+    .success .big { font-size:56px; margin:8px 0; }
+    .small { font-size:13px; color:#6b7280; }
+    .error { color:#b91c1c; background:#fee2e2; padding:10px 12px; border-radius:12px; display:none; margin-top:12px; }
+    @media (max-width:520px) {
+      .card { padding:22px; border-radius:24px; }
+      h1 { font-size:30px; }
+      h2 { font-size:22px; }
+      .btns { flex-direction:column; }
+      .secondary { order:2; }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <section class="card" id="screen"></section>
+  </main>
+
+<script>
+const WEB_APP_URL = ""; 
+// WICHTIG: Hier die URL deiner Google-Apps-Script-Web-App einfügen.
+// Ohne URL wird die Antwort nur lokal im Browser gespeichert.
+
+const QUESTIONS = [
+  {
+    "nr": 1,
+    "title": "Wo wohnst du heute?",
+    "options": [
+      "Bis 20 km entfernt",
+      "20–100 km",
+      "Über 100 km",
+      "Im Ausland"
+    ],
+    "note": "Was gefällt dir an deinem Wohnort besonders?"
+  },
+  {
+    "nr": 2,
+    "title": "Dein Beziehungsstatus?",
+    "options": [
+      "Verheiratet",
+      "Vergeben",
+      "Single",
+      "Geschieden",
+      "Es ist kompliziert..."
+    ],
+    "note": "Seit wann oder was macht eure Beziehung besonders?"
+  },
+  {
+    "nr": 3,
+    "title": "Wie viele Kinder hast du?",
+    "options": [
+      "Keine",
+      "1",
+      "2",
+      "3 oder mehr"
+    ],
+    "note": "Worauf bist du als Mutter/Vater besonders stolz?"
+  },
+  {
+    "nr": 4,
+    "title": "Wie oft bist du seit dem Abi umgezogen?",
+    "options": [
+      "Nie",
+      "1–2 Mal",
+      "3–5 Mal",
+      "Mehr als 5 Mal"
+    ],
+    "note": "Wo hat es dir bisher am besten gefallen?"
+  },
+  {
+    "nr": 5,
+    "title": "Was machst du beruflich?",
+    "options": [
+      "Angestellt",
+      "Selbstständig",
+      "Öffentlicher Dienst",
+      "Handwerk",
+      "Etwas ganz anderes"
+    ],
+    "note": "Was macht dir an deinem Beruf Spaß?"
+  },
+  {
+    "nr": 6,
+    "title": "Wie oft hast du den Arbeitgeber gewechselt?",
+    "options": [
+      "Nie",
+      "1–2 Mal",
+      "3–5 Mal",
+      "Mehr als 5 Mal"
+    ],
+    "note": "Was war dein mutigster Karriereschritt?"
+  },
+  {
+    "nr": 7,
+    "title": "Wie kommst du überwiegend von A nach B?",
+    "options": [
+      "Auto",
+      "Fahrrad",
+      "Bahn",
+      "Zu Fuß",
+      "Homeoffice"
+    ],
+    "note": "Was fährst du?"
+  },
+  {
+    "nr": 8,
+    "title": "Wie viele PS hat dein Auto?",
+    "options": [
+      "Kein Auto",
+      "Unter 100",
+      "100–150",
+      "151–250",
+      "Über 250"
+    ],
+    "note": "Welches Modell?"
+  },
+  {
+    "nr": 9,
+    "title": "Wohnst du...",
+    "options": [
+      "Im eigenen Haus",
+      "Eigentumswohnung",
+      "Zur Miete"
+    ],
+    "note": "Dein größtes Heimwerker-Desaster?"
+  },
+  {
+    "nr": 10,
+    "title": "Wie viele Länder hast du bereist?",
+    "options": [
+      "0–5",
+      "6–15",
+      "16–30",
+      "Mehr als 30"
+    ],
+    "note": "Dein schönstes Reiseziel?"
+  },
+  {
+    "nr": 11,
+    "title": "Haustiere?",
+    "options": [
+      "Keine",
+      "Hund",
+      "Katze",
+      "Andere"
+    ],
+    "note": "Name des tierischen Mitbewohners?"
+  },
+  {
+    "nr": 12,
+    "title": "Wie fit fühlst du dich?",
+    "options": [
+      "Wie mit 20",
+      "Ganz gut",
+      "Luft nach oben",
+      "Orthopäde kennt mich beim Vornamen"
+    ],
+    "note": "Welchen Sport machst du?"
+  },
+  {
+    "nr": 13,
+    "title": "Wie oft feierst du heute noch?",
+    "options": [
+      "Regelmäßig",
+      "Ab und zu",
+      "Selten",
+      "Nur heute"
+    ],
+    "note": "Dein bester Party-Moment?"
+  },
+  {
+    "nr": 14,
+    "title": "Dein größter Luxus?",
+    "options": [
+      "Reisen",
+      "Auto",
+      "Haus",
+      "Technik",
+      "Freizeit"
+    ],
+    "note": "Worauf gönnst du dir am liebsten etwas?"
+  },
+  {
+    "nr": 15,
+    "title": "Hast du eine Midlife-Crisis?",
+    "options": [
+      "Nein",
+      "Vielleicht",
+      "Definitiv"
+    ],
+    "note": "Woran merkt man das?"
+  },
+  {
+    "nr": 16,
+    "title": "Was ist heute wichtiger als mit 18?",
+    "options": [
+      "Familie",
+      "Gesundheit",
+      "Beruf",
+      "Freizeit",
+      "Schlaf"
+    ],
+    "note": "Warum?"
+  },
+  {
+    "nr": 17,
+    "title": "Wie viele Knochen hast du dir seit dem Abi gebrochen?",
+    "options": [
+      "Keine",
+      "Einen",
+      "Zwei",
+      "Mehr als zwei"
+    ],
+    "note": "Wie ist das passiert?"
+  },
+  {
+    "nr": 18,
+    "title": "Was macht dich heute am glücklichsten?",
+    "options": [
+      "Familie",
+      "Freunde",
+      "Beruf",
+      "Reisen",
+      "Freizeit"
+    ],
+    "note": "Erzähl uns kurz warum."
+  },
+  {
+    "nr": 19,
+    "title": "Wie viele WhatsApp-Gruppen hast du stummgeschaltet?",
+    "options": [
+      "Keine",
+      "1–5",
+      "6–10",
+      "Viel zu viele"
+    ],
+    "note": "Welche würdest du am liebsten verlassen?"
+  },
+  {
+    "nr": 20,
+    "title": "Wie viele graue Haare hast du?",
+    "options": [
+      "Keine",
+      "Einige",
+      "Viele",
+      "Ich habe das Problem anders gelöst."
+    ],
+    "note": "Seit wann?"
+  },
+  {
+    "nr": 21,
+    "title": "Was hast du heute mehr als mit 18?",
+    "options": [
+      "Geld",
+      "Verantwortung",
+      "Gelassenheit",
+      "Rückenschmerzen"
+    ],
+    "note": "Was vermisst du aus der Abi-Zeit?"
+  },
+  {
+    "nr": 22,
+    "title": "Was war dein schönster Moment seit dem Abi?",
+    "options": [
+      "Familie",
+      "Beruf",
+      "Reise",
+      "Hobby",
+      "Etwas anderes"
+    ],
+    "note": "Erzähl uns davon."
+  },
+  {
+    "nr": 23,
+    "title": "Welchen Traum hast du dir erfüllt?",
+    "options": [
+      "Haus",
+      "Weltreise",
+      "Familie",
+      "Beruf",
+      "Noch keinen"
+    ],
+    "note": "Welcher war es?"
+  },
+  {
+    "nr": 24,
+    "title": "Würdest du das Abitur heute noch einmal schaffen?",
+    "options": [
+      "Locker",
+      "Mit Nachhilfe",
+      "Nur mit ChatGPT",
+      "Lieber nicht"
+    ],
+    "note": "Welches Fach würde dir heute am schwersten fallen?"
+  },
+  {
+    "nr": 25,
+    "title": "25 Jahre später – beschreibe dein Leben in drei Wörtern.",
+    "options": [],
+    "note": "Deine drei Wörter:"
+  }
+];
+
+let state = {
+  started: false,
+  index: 0,
+  answers: {},
+  participantName: ""
+};
+
+const screen = document.getElementById("screen");
+
+function escapeHtml(str) {
+  return String(str || "").replace(/[&<>"']/g, s => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[s]));
+}
+
+function renderStart() {
+  screen.innerHTML = `
+    <span class="badge">🎓 25 Jahre Abi</span>
+    <h1>Was ist aus uns geworden?</h1>
+    <p>25 Jahre – 25 Fragen. Die Auswertung zeigen wir beim Abitreffen. Jede Frage hat eine Auswahl und optional einen persönlichen Kommentar.</p>
+    <p><strong>Dauer:</strong> ca. 5–7 Minuten. Du kannst am Ende anonym bleiben oder deinen Namen eintragen.</p>
+    <button class="primary" onclick="startSurvey()">Los geht's</button>
+    <p class="hint">Hinweis: Humor ja, Bloßstellen nein. Freitexte werden bitte nur freiwillig ausgefüllt.</p>
+  `;
+}
+
+function startSurvey() {
+  state.started = true;
+  renderQuestion();
+}
+
+function renderQuestion() {
+  const q = QUESTIONS[state.index];
+  const a = state.answers[q.nr] || {};
+  const pct = Math.round((state.index) / QUESTIONS.length * 100);
+  const optionsHtml = q.options.length ? `
+    <div class="options">
+      ${q.options.map(opt => `
+        <label class="option">
+          <input type="radio" name="choice" value="${escapeHtml(opt)}" ${a.choice === opt ? "checked" : ""}>
+          <span>${escapeHtml(opt)}</span>
+        </label>
+      `).join("")}
+    </div>` : "";
+
+  screen.innerHTML = `
+    <div class="progress-wrap"><div class="progress" style="width:${pct}%"></div></div>
+    <div class="meta"><span>Frage ${q.nr} von ${QUESTIONS.length}</span><span>${pct}%</span></div>
+    <h2>${q.nr}. ${escapeHtml(q.title)}</h2>
+    ${optionsHtml}
+    <p><strong>Optional:</strong> ${escapeHtml(q.note)}</p>
+    <textarea id="comment" placeholder="Deine persönliche Antwort...">${escapeHtml(a.comment || "")}</textarea>
+    <div class="error" id="err">Bitte wähle eine Antwort aus oder schreibe etwas in das Textfeld.</div>
+    <div class="btns">
+      <button class="secondary" onclick="prevQuestion()" ${state.index === 0 ? "disabled" : ""}>Zurück</button>
+      <button class="primary" onclick="nextQuestion()">${state.index === QUESTIONS.length - 1 ? "Abschließen" : "Weiter"}</button>
+    </div>
+  `;
+}
+
+function saveCurrent() {
+  const q = QUESTIONS[state.index];
+  const selected = document.querySelector("input[name='choice']:checked");
+  const comment = document.getElementById("comment")?.value.trim() || "";
+  state.answers[q.nr] = {
+    question: q.title,
+    choice: selected ? selected.value : "",
+    comment
+  };
+}
+
+function nextQuestion() {
+  saveCurrent();
+  const q = QUESTIONS[state.index];
+  const a = state.answers[q.nr];
+  if (!a.choice && !a.comment) {
+    document.getElementById("err").style.display = "block";
+    return;
+  }
+  if (state.index < QUESTIONS.length - 1) {
+    state.index++;
+    renderQuestion();
+  } else {
+    renderFinal();
+  }
+}
+
+function prevQuestion() {
+  saveCurrent();
+  if (state.index > 0) {
+    state.index--;
+    renderQuestion();
+  }
+}
+
+function renderFinal() {
+  screen.innerHTML = `
+    <span class="badge">Fast fertig</span>
+    <h2>Danke für deine Antworten.</h2>
+    <p>Du kannst freiwillig deinen Namen angeben. Für die Präsentation können Antworten auch anonym verwendet werden.</p>
+    <input id="participantName" type="text" placeholder="Name, freiwillig" value="${escapeHtml(state.participantName || "")}">
+    <div class="error" id="submitErr">Das Speichern hat nicht funktioniert. Bitte prüfe die Internetverbindung oder speichere lokal.</div>
+    <div class="btns">
+      <button class="secondary" onclick="state.index=QUESTIONS.length-1; renderQuestion();">Zurück</button>
+      <button class="primary" onclick="submitSurvey()">Antworten absenden</button>
+    </div>
+    <button class="ghost" onclick="downloadLocal()">Antworten lokal als JSON sichern</button>
+    <p class="small">Technik-Hinweis: Für zentrales Sammeln muss die Google-Apps-Script-URL in der Datei index.html eingetragen sein.</p>
+  `;
+}
+
+async function submitSurvey() {
+  state.participantName = document.getElementById("participantName").value.trim();
+  const payload = {
+    submittedAt: new Date().toISOString(),
+    participantName: state.participantName,
+    answers: state.answers
+  };
+
+  localStorage.setItem("abi25_last_submission", JSON.stringify(payload));
+
+  if (!WEB_APP_URL) {
+    renderSuccess(false);
+    return;
+  }
+
+  try {
+    await fetch(WEB_APP_URL, {
+      method: "POST",
+      mode: "no-cors",
+      headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(payload)
+    });
+    renderSuccess(true);
+  } catch (e) {
+    document.getElementById("submitErr").style.display = "block";
+  }
+}
+
+function renderSuccess(sent) {
+  screen.innerHTML = `
+    <div class="success">
+      <div class="big">🎉</div>
+      <h1>Vielen Dank!</h1>
+      <p>Deine Antworten wurden ${sent ? "gespeichert" : "auf diesem Gerät vorbereitet"}.</p>
+      <p>Wir sehen uns bei der Auswertung.</p>
+      <button class="secondary" onclick="location.reload()">Noch einmal ausfüllen</button>
+      ${!sent ? '<p class="hint">Noch nicht zentral gespeichert: Bitte vorher die Google-Apps-Script-URL in index.html eintragen.</p>' : ''}
+    </div>
+  `;
+}
+
+function downloadLocal() {
+  const blob = new Blob([localStorage.getItem("abi25_last_submission") || JSON.stringify(state, null, 2)], {type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "abi25_antworten.json";
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+renderStart();
+</script>
+</body>
+</html>
